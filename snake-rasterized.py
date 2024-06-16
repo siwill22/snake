@@ -46,8 +46,8 @@ gdf_dec = gdf.iloc[::5,:]
 
 
 
-proj = ccrs.PlateCarree()
-extent = (-179.9, 179.9, -89.9, 89.9)
+#proj = ccrs.PlateCarree()
+#extent = (-179.9, 179.9, -89.9, 89.9)
 
 time_step = 1./365.
 
@@ -63,59 +63,44 @@ magnetic_grid = pygmt.binstats(data=gdf_dec[['Longitude', 'Latitude', 'Cleaned r
 
 
 
+for yr in np.arange(1970,1980,time_step):
 
-for yr in np.arange(1964,2009,time_step):
-    
-    #if yr>1980:
-    #    all_data_so_far = gdf_dec20.query('Year<@yr')
-    #else:
-    #all_data_so_far = gdf_dec.query('Year<@yr')
+    print(yr)
+    #all_data_so_far = gdf.query('Year<@yr')
     all_data_so_far = magnetic_grid.where(year_grid<yr)
 
-
+    #most_recent_data = all_data_so_far.query('Year>(@yr-@time_step*5)')
     most_recent_data = gdf_dec.query('Year<@yr & Year>(@yr-@time_step*5)')
 
-    fig = plt.figure(figsize=[32, 16])
 
-    # We choose to plot in an Orthographic projection as it looks natural
-    # and the distortion is relatively small around the poles where
-    # the aurora is most likely.
-
-    # ax1 for Northern Hemisphere
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.Mollweide(0))
-
-    #ax.coastlines(zorder=3)
-    #ax.stock_img()
-    #ax.gridlines()
-    #ax.gridlines(linewidth=1, color='gray', alpha=0.5, linestyle='--', xlocs=range(-180, 181, 15), ylocs=range(-90, 91, 15))
-
-    ax.add_feature(cartopy.feature.LAND.with_scale('10m'), facecolor='grey')
-    ax.set_extent(extent, crs=proj)
-
-    ax.spines['geo'].set_linewidth(4)
-    ax.spines['geo'].set_edgecolor('black')
-
-    #if len(all_data_so_far)>0:
-    #    ax.scatter(all_data_so_far.geometry.x, 
-    #               all_data_so_far.geometry.y, 
-    #               c=all_data_so_far['Residual field'], 
-    #               cmap='seismic', vmin=-200, vmax=200,
-    #               s=1, alpha=0.7,
-    #               transform=proj)
-    ax.pcolormesh(all_data_so_far, cmap='seismic', vmin=-200, vmax=200, transform=proj)
-    if len(most_recent_data)>0:
-        alpha_factor = np.array(1+(most_recent_data.Year-yr) / (time_step*5))
-        ax.scatter(most_recent_data.geometry.x, 
-                   most_recent_data.geometry.y, 
-                   color='darkorange', s=30,
-                   transform=proj, alpha=alpha_factor, zorder=2)
-
-    plt.tight_layout()
-    yyyy,mm,dd = decimal_year_to_year_month(yr)
-    fig.suptitle('{:d}/{:d}/{:d}'.format(yyyy,mm,dd), y=0.97, x=0.1, fontsize=80)
-    #plt.show()
+    region = 'd'
+    projection = 'W180/12c'
+    fig = pygmt.Figure()
     
-    fig.savefig('./sequence/Shiptracks/sequence_{:0.3f}.jpg'.format(yr), dpi=75)
-    plt.close()
-    break
+    pygmt.makecpt(cmap='polar', series='-200/200', reverse=True)
+    fig.grdimage(all_data_so_far, region=region, projection=projection, cmap=True, verbose='q')
+
+    fig.coast(land='gray70', resolution='l', area_thresh=5000.,
+              region=region, projection=projection, 
+              transparency=20)
+
+    if len(most_recent_data)>0:
+        fig.plot(x=most_recent_data.geometry.x, 
+                 y=most_recent_data.geometry.y,
+                 fill='darkorange', 
+                 style='c',
+                 size=0.05+np.arange(len(most_recent_data))/(len(most_recent_data)*20),
+                 transparency=70,
+                 #pen='0.02p,darkgray', 
+                 region=region, projection=projection)
+
+    yyyy,mm,dd = decimal_year_to_year_month(yr)
+    fig.text(x=0.01,y=1.07,text='{:d}/{:d}/{:d}'.format(yyyy,mm,dd), justify='LM',
+                     region='0/1/0/1', projection='x5.25c', font='12p', no_clip=True)
+    
+    fig.basemap(frame=['f'],#,'+t{:0.1f}'.format(yr)], 
+                region=region, projection=projection)
+
+    fig.savefig('./sequence/Shiptracks/sequence_{:0.3f}.png'.format(yr))
+
 

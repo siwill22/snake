@@ -153,3 +153,5 @@ cython_debug/
 sequence/Shiptracks/.DS_Store
 sequence/.DS_Store
 sequence/Shiptracks/*
+.DS_Store
+/sequence
